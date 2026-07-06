@@ -1,0 +1,19 @@
+# Environnement
+.venv/
+__pycache__/
+*.pyc
+
+# Donnees (trop volumineuses pour Git)
+data/
+
+# MLflow local
+mlflow.db
+mlruns/
+
+# Artefacts temporaires
+artefact_test.txt
+reports/
+
+# IDE / OS
+.vscode/
+Thumbs.db
