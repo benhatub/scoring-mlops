@@ -8,6 +8,7 @@ Le seuil de decision vient de models/threshold.txt (seuil metier optimal).
 """
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 import joblib
 import pandas as pd
@@ -91,3 +92,6 @@ def predict(client: ClientData):
             else "Risque faible : credit accorde."
         ),
     }
+@app.get("/", include_in_schema=False)
+def interface():
+    return FileResponse(BASE_DIR / "static" / "index.html")

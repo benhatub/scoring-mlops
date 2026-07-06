@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Credit Scoring | MLOps</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    min-height: 100vh; color: #e2e8f0; padding: 2rem 1rem;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 2rem; }
+  header h1 { font-size: 1.9rem; color: #f8fafc; }
+  header h1 span { color: #38bdf8; }
+  header p { color: #94a3b8; margin-top: .4rem; font-size: .95rem; }
+
+  .layout { display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.5rem; }
+  @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
+
+  .card {
+    background: rgba(30, 41, 59, .7); border: 1px solid #334155;
+    border-radius: 16px; padding: 1.6rem;
+  }
+  .card h2 { font-size: 1.1rem; margin-bottom: 1.2rem; color: #f1f5f9; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
+  .field label {
+    display: block; font-size: .78rem; color: #94a3b8; margin-bottom: .3rem;
+  }
+  .field input {
+    width: 100%; padding: .55rem .7rem; border-radius: 8px;
+    border: 1px solid #475569; background: #0f172a; color: #f1f5f9;
+    font-size: .9rem;
+  }
+  .field input:focus { outline: 2px solid #38bdf8; border-color: transparent; }
+
+  button {
+    width: 100%; margin-top: 1.2rem; padding: .8rem;
+    background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+    color: #0f172a; font-weight: 700; font-size: 1rem;
+    border: none; border-radius: 10px; cursor: pointer;
+  }
+  button:hover { opacity: .9; }
+  button:disabled { opacity: .5; cursor: wait; }
+
+  /* Jauge */
+  .gauge-wrap { text-align: center; padding: 1rem 0; }
+  .gauge { width: 220px; height: 120px; margin: 0 auto; position: relative; }
+  .gauge svg { width: 100%; height: 100%; }
+  .gauge .value {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    font-size: 2rem; font-weight: 800; color: #f8fafc;
+  }
+  .decision {
+    margin-top: 1.2rem; padding: .9rem; border-radius: 10px;
+    font-weight: 700; font-size: 1.05rem; text-align: center;
+  }
+  .decision.accepte { background: #052e16; color: #4ade80; border: 1px solid #166534; }
+  .decision.refuse  { background: #450a0a; color: #f87171; border: 1px solid #991b1b; }
+  .meta { margin-top: .8rem; font-size: .82rem; color: #94a3b8; text-align: center; }
+  .placeholder { color: #64748b; text-align: center; padding: 3rem 1rem; font-size: .95rem; }
+  .error { color: #f87171; text-align: center; margin-top: 1rem; font-size: .9rem; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Credit <span>Scoring</span></h1>
+    <p>Prédiction du risque de défaut de paiement · RandomForest champion · seuil métier optimisé</p>
+  </header>
+
+  <div class="layout">
+    <div class="card">
+      <h2>📋 Informations du client</h2>
+      <div class="grid">
+        <div class="field"><label>Âge</label>
+          <input type="number" id="age" value="45" min="18" max="110"></div>
+        <div class="field"><label>Revenu mensuel ($)</label>
+          <input type="number" id="MonthlyIncome" value="5000" min="0"></div>
+        <div class="field"><label>Taux d'utilisation du crédit (0-1)</label>
+          <input type="number" id="RevolvingUtilizationOfUnsecuredLines" value="0.3" step="0.01" min="0"></div>
+        <div class="field"><label>Ratio d'endettement</label>
+          <input type="number" id="DebtRatio" value="0.35" step="0.01" min="0"></div>
+        <div class="field"><label>Retards 30-59 jours</label>
+          <input type="number" id="NumberOfTime30_59DaysPastDueNotWorse" value="0" min="0"></div>
+        <div class="field"><label>Retards 60-89 jours</label>
+          <input type="number" id="NumberOfTime60_89DaysPastDueNotWorse" value="0" min="0"></div>
+        <div class="field"><label>Retards 90+ jours</label>
+          <input type="number" id="NumberOfTimes90DaysLate" value="0" min="0"></div>
+        <div class="field"><label>Lignes de crédit ouvertes</label>
+          <input type="number" id="NumberOfOpenCreditLinesAndLoans" value="8" min="0"></div>
+        <div class="field"><label>Prêts immobiliers</label>
+          <input type="number" id="NumberRealEstateLoansOrLines" value="1" min="0"></div>
+        <div class="field"><label>Personnes à charge</label>
+          <input type="number" id="NumberOfDependents" value="2" min="0"></div>
+      </div>
+      <button id="btn" onclick="predire()">Évaluer le risque</button>
+      <div id="err" class="error"></div>
+    </div>
+
+    <div class="card">
+      <h2>📊 Résultat</h2>
+      <div id="result">
+        <div class="placeholder">Renseignez les informations du client<br>puis cliquez sur « Évaluer le risque »</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CHAMPS = [
+  "RevolvingUtilizationOfUnsecuredLines", "age",
+  "NumberOfTime30_59DaysPastDueNotWorse", "DebtRatio", "MonthlyIncome",
+  "NumberOfOpenCreditLinesAndLoans", "NumberOfTimes90DaysLate",
+  "NumberRealEstateLoansOrLines", "NumberOfTime60_89DaysPastDueNotWorse",
+  "NumberOfDependents"
+];
+
+function couleur(p) {
+  if (p < 0.3) return "#4ade80";
+  if (p < 0.56) return "#facc15";
+  return "#f87171";
+}
+
+function afficherJauge(proba, seuil, decision, message) {
+  const pct = Math.round(proba * 100);
+  const angle = -90 + proba * 180;
+  const col = couleur(proba);
+  const cls = decision === "ACCEPTE" ? "accepte" : "refuse";
+  document.getElementById("result").innerHTML = `
+    <div class="gauge-wrap">
+      <div class="gauge">
+        <svg viewBox="0 0 200 110">
+          <path d="M 15 100 A 85 85 0 0 1 185 100" fill="none" stroke="#334155" stroke-width="16" stroke-linecap="round"/>
+          <path d="M 15 100 A 85 85 0 0 1 185 100" fill="none" stroke="${col}" stroke-width="16"
+                stroke-linecap="round" stroke-dasharray="${proba * 267} 267"/>
+          <line x1="100" y1="100" x2="${100 + 70 * Math.cos(angle * Math.PI / 180)}"
+                y2="${100 + 70 * Math.sin(angle * Math.PI / 180)}"
+                stroke="#f8fafc" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="100" cy="100" r="6" fill="#f8fafc"/>
+        </svg>
+        <div class="value" style="color:${col}">${pct}%</div>
+      </div>
+      <div class="meta">Probabilité de défaut de paiement</div>
+      <div class="decision ${cls}">${decision === "ACCEPTE" ? "✅ CRÉDIT ACCORDÉ" : "⛔ CRÉDIT REFUSÉ"}</div>
+      <div class="meta">${message}<br>Seuil de décision métier : ${(seuil * 100).toFixed(0)}%</div>
+    </div>`;
+}
+
+async function predire() {
+  const btn = document.getElementById("btn");
+  const err = document.getElementById("err");
+  err.textContent = "";
+  btn.disabled = true;
+  btn.textContent = "Analyse en cours...";
+
+  const donnees = {};
+  for (const c of CHAMPS) donnees[c] = parseFloat(document.getElementById(c).value) || 0;
+
+  try {
+    const rep = await fetch("/predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(donnees)
+    });
+    if (!rep.ok) throw new Error("Erreur API " + rep.status);
+    const r = await rep.json();
+    afficherJauge(r.probabilite_defaut, r.seuil_metier, r.decision, r.message);
+  } catch (e) {
+    err.textContent = "Erreur : " + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Évaluer le risque";
+  }
+}
+</script>
+</body>
+</html>
