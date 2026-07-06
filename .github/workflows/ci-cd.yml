@@ -1,0 +1,37 @@
+name: CI-CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Installation de Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Installation des dependances
+        run: |
+          pip install -r requirements.txt
+          pip install pytest httpx
+
+      - name: Execution des tests
+        run: python -m pytest tests -v
+
+  deploy:
+    needs: test           # ne deploie QUE si les tests passent
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Declenchement du deploiement Render
+        run: curl -s "$RENDER_DEPLOY_HOOK"
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
