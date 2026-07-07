@@ -12,10 +12,20 @@
     min-height: 100vh; color: #e2e8f0; padding: 2rem 1rem;
   }
   .container { max-width: 1100px; margin: 0 auto; }
-  header { text-align: center; margin-bottom: 2rem; }
+  header { text-align: center; margin-bottom: 1.5rem; }
   header h1 { font-size: 1.9rem; color: #f8fafc; }
   header h1 span { color: #38bdf8; }
   header p { color: #94a3b8; margin-top: .4rem; font-size: .95rem; }
+
+  /* Onglets */
+  .tabs { display: flex; gap: .5rem; justify-content: center; margin-bottom: 1.5rem; }
+  .tab {
+    padding: .5rem 1.2rem; border-radius: 8px; cursor: pointer;
+    background: rgba(30,41,59,.7); border: 1px solid #334155;
+    color: #94a3b8; font-size: .9rem; font-weight: 600;
+  }
+  .tab.active { background: #0ea5e9; color: #0f172a; border-color: #0ea5e9; }
+  .hidden { display: none; }
 
   .layout { display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.5rem; }
   @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
@@ -63,6 +73,42 @@
   .meta { margin-top: .8rem; font-size: .82rem; color: #94a3b8; text-align: center; }
   .placeholder { color: #64748b; text-align: center; padding: 3rem 1rem; font-size: .95rem; }
   .error { color: #f87171; text-align: center; margin-top: 1rem; font-size: .9rem; }
+
+  /* Facteurs personnalises */
+  .facteurs { margin-top: 1.2rem; text-align: left; }
+  .facteurs h3 { font-size: .85rem; color: #94a3b8; margin-bottom: .5rem; }
+  .facteur {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .45rem .6rem; border-radius: 8px; margin-bottom: .4rem;
+    font-size: .82rem; border: 1px solid #334155; background: #0f172a;
+  }
+  .facteur.risque { border-left: 3px solid #f87171; }
+  .facteur.protection { border-left: 3px solid #4ade80; }
+  .facteur .badge {
+    font-size: .68rem; padding: .1rem .45rem; border-radius: 99px;
+    background: #334155; color: #cbd5e1; white-space: nowrap; margin-left: auto;
+  }
+
+  /* Onglet modeles */
+  table.models { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  table.models th, table.models td {
+    padding: .55rem .6rem; text-align: center; border-bottom: 1px solid #334155;
+  }
+  table.models th { color: #94a3b8; font-weight: 600; }
+  table.models tr.champion { background: rgba(14,165,233,.12); }
+  table.models tr.champion td:first-child::after { content: " 🏆"; }
+  .note { margin-top: .8rem; font-size: .82rem; color: #94a3b8; }
+  .figs { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.4rem; }
+  @media (max-width: 800px) { .figs { grid-template-columns: 1fr; } }
+  .figs figure { background: #f8fafc; border-radius: 10px; padding: .5rem; }
+  .figs img { width: 100%; border-radius: 6px; display: block; }
+  .figs figcaption { text-align: center; color: #0f172a; font-size: .78rem; padding: .3rem; font-weight: 600; }
+  .pipeline {
+    margin-top: 1.4rem; text-align: center; color: #94a3b8; font-size: .85rem;
+    background: rgba(30,41,59,.7); border: 1px solid #334155;
+    border-radius: 10px; padding: .9rem; line-height: 1.6;
+  }
+  .pipeline b { color: #38bdf8; }
 </style>
 </head>
 <body>
@@ -72,39 +118,81 @@
     <p>Prédiction du risque de défaut de paiement · RandomForest champion · seuil métier optimisé</p>
   </header>
 
-  <div class="layout">
-    <div class="card">
-      <h2>📋 Informations du client</h2>
-      <div class="grid">
-        <div class="field"><label>Âge</label>
-          <input type="number" id="age" value="45" min="18" max="110"></div>
-        <div class="field"><label>Revenu mensuel ($)</label>
-          <input type="number" id="MonthlyIncome" value="5000" min="0"></div>
-        <div class="field"><label>Taux d'utilisation du crédit (0-1)</label>
-          <input type="number" id="RevolvingUtilizationOfUnsecuredLines" value="0.3" step="0.01" min="0"></div>
-        <div class="field"><label>Ratio d'endettement</label>
-          <input type="number" id="DebtRatio" value="0.35" step="0.01" min="0"></div>
-        <div class="field"><label>Retards 30-59 jours</label>
-          <input type="number" id="NumberOfTime30_59DaysPastDueNotWorse" value="0" min="0"></div>
-        <div class="field"><label>Retards 60-89 jours</label>
-          <input type="number" id="NumberOfTime60_89DaysPastDueNotWorse" value="0" min="0"></div>
-        <div class="field"><label>Retards 90+ jours</label>
-          <input type="number" id="NumberOfTimes90DaysLate" value="0" min="0"></div>
-        <div class="field"><label>Lignes de crédit ouvertes</label>
-          <input type="number" id="NumberOfOpenCreditLinesAndLoans" value="8" min="0"></div>
-        <div class="field"><label>Prêts immobiliers</label>
-          <input type="number" id="NumberRealEstateLoansOrLines" value="1" min="0"></div>
-        <div class="field"><label>Personnes à charge</label>
-          <input type="number" id="NumberOfDependents" value="2" min="0"></div>
-      </div>
-      <button id="btn" onclick="predire()">Évaluer le risque</button>
-      <div id="err" class="error"></div>
-    </div>
+  <div class="tabs">
+    <div class="tab active" onclick="montrerOnglet('scoring', this)">🎯 Scoring</div>
+    <div class="tab" onclick="montrerOnglet('modeles', this)">📈 Modèles &amp; Performance</div>
+  </div>
 
+  <!-- ==================== ONGLET 1 : SCORING ==================== -->
+  <div id="onglet-scoring">
+    <div class="layout">
+      <div class="card">
+        <h2>📋 Informations du client</h2>
+        <div class="grid">
+          <div class="field"><label>Âge</label>
+            <input type="number" id="age" value="45" min="18" max="110"></div>
+          <div class="field"><label>Revenu mensuel ($)</label>
+            <input type="number" id="MonthlyIncome" value="5000" min="0"></div>
+          <div class="field"><label>Taux d'utilisation du crédit (0-1)</label>
+            <input type="number" id="RevolvingUtilizationOfUnsecuredLines" value="0.3" step="0.01" min="0"></div>
+          <div class="field"><label>Ratio d'endettement</label>
+            <input type="number" id="DebtRatio" value="0.35" step="0.01" min="0"></div>
+          <div class="field"><label>Retards 30-59 jours</label>
+            <input type="number" id="NumberOfTime30_59DaysPastDueNotWorse" value="0" min="0"></div>
+          <div class="field"><label>Retards 60-89 jours</label>
+            <input type="number" id="NumberOfTime60_89DaysPastDueNotWorse" value="0" min="0"></div>
+          <div class="field"><label>Retards 90+ jours</label>
+            <input type="number" id="NumberOfTimes90DaysLate" value="0" min="0"></div>
+          <div class="field"><label>Lignes de crédit ouvertes</label>
+            <input type="number" id="NumberOfOpenCreditLinesAndLoans" value="8" min="0"></div>
+          <div class="field"><label>Prêts immobiliers</label>
+            <input type="number" id="NumberRealEstateLoansOrLines" value="1" min="0"></div>
+          <div class="field"><label>Personnes à charge</label>
+            <input type="number" id="NumberOfDependents" value="2" min="0"></div>
+        </div>
+        <button id="btn" onclick="predire()">Évaluer le risque</button>
+        <div id="err" class="error"></div>
+      </div>
+
+      <div class="card">
+        <h2>📊 Résultat</h2>
+        <div id="result">
+          <div class="placeholder">Renseignez les informations du client<br>puis cliquez sur « Évaluer le risque »</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== ONGLET 2 : MODELES ==================== -->
+  <div id="onglet-modeles" class="hidden">
     <div class="card">
-      <h2>📊 Résultat</h2>
-      <div id="result">
-        <div class="placeholder">Renseignez les informations du client<br>puis cliquez sur « Évaluer le risque »</div>
+      <h2>🏁 Comparaison des modèles (jeu de test, 30 000 clients)</h2>
+      <table class="models">
+        <tr><th>Modèle</th><th>ROC-AUC</th><th>Coût métier ↓</th><th>Score métier ↑</th><th>Seuil optimal</th></tr>
+        <tr><td>Baseline (Dummy)</td><td>0.500</td><td>0.668</td><td>0.000</td><td>—</td></tr>
+        <tr><td>Régression Logistique</td><td>0.860</td><td>0.346</td><td>0.482</td><td>0.52</td></tr>
+        <tr><td>LogReg + SMOTE</td><td>0.860</td><td>0.346</td><td>0.482</td><td>0.58</td></tr>
+        <tr class="champion"><td>Random Forest</td><td>0.867</td><td><b>0.327</b></td><td><b>0.511</b></td><td>0.56</td></tr>
+        <tr><td>XGBoost</td><td><b>0.870</b></td><td>0.327</td><td>0.510</td><td>0.54</td></tr>
+      </table>
+      <p class="note">
+        Le champion est choisi sur le <b>coût métier</b> (faux négatif = 10, faux positif = 1),
+        pas sur le ROC-AUC : XGBoost a le meilleur AUC, mais Random Forest coûte moins cher à la banque.
+        C'est tout l'intérêt du score métier de l'Étape 3.
+      </p>
+      <div class="figs">
+        <figure><img src="/static/figures/roc_rf.png" alt="Courbe ROC Random Forest">
+          <figcaption>Courbe ROC — Random Forest (champion)</figcaption></figure>
+        <figure><img src="/static/figures/cm_rf.png" alt="Matrice de confusion">
+          <figcaption>Matrice de confusion au seuil métier 0.56</figcaption></figure>
+        <figure><img src="/static/figures/importance_rf.png" alt="Importance des variables">
+          <figcaption>Importance des variables — Random Forest</figcaption></figure>
+        <figure><img src="/static/figures/shap_xgb.png" alt="Analyse SHAP">
+          <figcaption>Analyse SHAP — XGBoost</figcaption></figure>
+      </div>
+      <div class="pipeline">
+        ⚙️ <b>Pipeline MLOps</b> : GitHub → GitHub Actions (tests automatisés) → Render (déploiement continu)<br>
+        Modèle servi : credit-scoring-model <b>@champion</b> (MLflow Model Registry) · Seuil de décision métier : <b>56%</b>
       </div>
     </div>
   </div>
@@ -119,17 +207,36 @@ const CHAMPS = [
   "NumberOfDependents"
 ];
 
+function montrerOnglet(nom, el) {
+  document.getElementById("onglet-scoring").classList.toggle("hidden", nom !== "scoring");
+  document.getElementById("onglet-modeles").classList.toggle("hidden", nom !== "modeles");
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  el.classList.add("active");
+}
+
 function couleur(p) {
   if (p < 0.3) return "#4ade80";
   if (p < 0.56) return "#facc15";
   return "#f87171";
 }
 
-function afficherJauge(proba, seuil, decision, message) {
+function afficherJauge(proba, seuil, decision, message, facteurs) {
   const pct = Math.round(proba * 100);
   const angle = -90 + proba * 180;
   const col = couleur(proba);
   const cls = decision === "ACCEPTE" ? "accepte" : "refuse";
+
+  let htmlFacteurs = "";
+  if (facteurs && facteurs.length) {
+    htmlFacteurs = `<div class="facteurs"><h3>🔎 Facteurs d'analyse de ce client</h3>` +
+      facteurs.map(f => `
+        <div class="facteur ${f.sens}">
+          <span>${f.sens === "risque" ? "⚠️" : "🛡️"}</span>
+          <span>${f.label}</span>
+          <span class="badge">impact ${f.impact}</span>
+        </div>`).join("") + `</div>`;
+  }
+
   document.getElementById("result").innerHTML = `
     <div class="gauge-wrap">
       <div class="gauge">
@@ -147,6 +254,7 @@ function afficherJauge(proba, seuil, decision, message) {
       <div class="meta">Probabilité de défaut de paiement</div>
       <div class="decision ${cls}">${decision === "ACCEPTE" ? "✅ CRÉDIT ACCORDÉ" : "⛔ CRÉDIT REFUSÉ"}</div>
       <div class="meta">${message}<br>Seuil de décision métier : ${(seuil * 100).toFixed(0)}%</div>
+      ${htmlFacteurs}
     </div>`;
 }
 
@@ -168,7 +276,7 @@ async function predire() {
     });
     if (!rep.ok) throw new Error("Erreur API " + rep.status);
     const r = await rep.json();
-    afficherJauge(r.probabilite_defaut, r.seuil_metier, r.decision, r.message);
+    afficherJauge(r.probabilite_defaut, r.seuil_metier, r.decision, r.message, r.facteurs);
   } catch (e) {
     err.textContent = "Erreur : " + e.message;
   } finally {
