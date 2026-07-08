@@ -17,6 +17,17 @@
   header h1 span { color: #38bdf8; }
   header p { color: #94a3b8; margin-top: .4rem; font-size: .95rem; }
 
+  /* Badge statut API */
+  .api-status {
+    display: inline-flex; align-items: center; gap: .4rem;
+    margin-top: .6rem; padding: .25rem .7rem; border-radius: 99px;
+    font-size: .75rem; font-weight: 600;
+    background: rgba(30,41,59,.7); border: 1px solid #334155; color: #94a3b8;
+  }
+  .api-status .dot { width: 8px; height: 8px; border-radius: 50%; background: #64748b; }
+  .api-status.ok .dot { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+  .api-status.ko .dot { background: #f87171; }
+
   /* Onglets */
   .tabs { display: flex; gap: .5rem; justify-content: center; margin-bottom: 1.5rem; }
   .tab {
@@ -36,6 +47,15 @@
   }
   .card h2 { font-size: 1.1rem; margin-bottom: 1.2rem; color: #f1f5f9; }
 
+  /* Profils types */
+  .profils { display: flex; gap: .5rem; margin-bottom: 1.1rem; flex-wrap: wrap; }
+  .profil {
+    flex: 1; min-width: 110px; padding: .45rem .5rem; border-radius: 8px;
+    font-size: .78rem; font-weight: 600; cursor: pointer; text-align: center;
+    background: #0f172a; border: 1px solid #475569; color: #cbd5e1;
+  }
+  .profil:hover { border-color: #38bdf8; color: #38bdf8; }
+
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
   .field label {
     display: block; font-size: .78rem; color: #94a3b8; margin-bottom: .3rem;
@@ -47,14 +67,14 @@
   }
   .field input:focus { outline: 2px solid #38bdf8; border-color: transparent; }
 
-  button {
+  button.principal {
     width: 100%; margin-top: 1.2rem; padding: .8rem;
     background: linear-gradient(90deg, #0ea5e9, #38bdf8);
     color: #0f172a; font-weight: 700; font-size: 1rem;
     border: none; border-radius: 10px; cursor: pointer;
   }
-  button:hover { opacity: .9; }
-  button:disabled { opacity: .5; cursor: wait; }
+  button.principal:hover { opacity: .9; }
+  button.principal:disabled { opacity: .5; cursor: wait; }
 
   /* Jauge */
   .gauge-wrap { text-align: center; padding: 1rem 0; }
@@ -64,8 +84,31 @@
     position: absolute; bottom: 0; left: 0; right: 0;
     font-size: 2rem; font-weight: 800; color: #f8fafc;
   }
+
+  /* Barre proba vs seuil */
+  .seuil-bar-wrap { margin: 1.1rem auto 0; max-width: 320px; text-align: left; }
+  .seuil-bar-label { font-size: .72rem; color: #94a3b8; display: flex; justify-content: space-between; margin-bottom: .25rem; }
+  .seuil-bar {
+    position: relative; height: 12px; border-radius: 99px;
+    background: linear-gradient(90deg, #166534, #4ade80 30%, #facc15 56%, #f87171 80%, #991b1b);
+    opacity: .85;
+  }
+  .seuil-marker {
+    position: absolute; top: -4px; bottom: -4px; width: 3px;
+    background: #f8fafc; border-radius: 2px;
+  }
+  .seuil-marker::after {
+    content: "seuil"; position: absolute; top: -16px; left: 50%;
+    transform: translateX(-50%); font-size: .62rem; color: #f8fafc;
+  }
+  .proba-cursor {
+    position: absolute; top: 50%; width: 14px; height: 14px;
+    transform: translate(-50%, -50%); border-radius: 50%;
+    background: #0f172a; border: 3px solid #f8fafc;
+  }
+
   .decision {
-    margin-top: 1.2rem; padding: .9rem; border-radius: 10px;
+    margin-top: 1.4rem; padding: .9rem; border-radius: 10px;
     font-weight: 700; font-size: 1.05rem; text-align: center;
   }
   .decision.accepte { background: #052e16; color: #4ade80; border: 1px solid #166534; }
@@ -116,6 +159,7 @@
   <header>
     <h1>Credit <span>Scoring</span></h1>
     <p>Prédiction du risque de défaut de paiement · RandomForest champion · seuil métier optimisé</p>
+    <div class="api-status" id="api-status"><span class="dot"></span><span id="api-status-txt">Vérification de l'API…</span></div>
   </header>
 
   <div class="tabs">
@@ -128,6 +172,13 @@
     <div class="layout">
       <div class="card">
         <h2>📋 Informations du client</h2>
+
+        <div class="profils">
+          <div class="profil" onclick="chargerProfil('fiable')">👤 Client fiable</div>
+          <div class="profil" onclick="chargerProfil('limite')">⚖️ Cas limite</div>
+          <div class="profil" onclick="chargerProfil('risque')">🚨 Client à risque</div>
+        </div>
+
         <div class="grid">
           <div class="field"><label>Âge</label>
             <input type="number" id="age" value="45" min="18" max="110"></div>
@@ -150,14 +201,14 @@
           <div class="field"><label>Personnes à charge</label>
             <input type="number" id="NumberOfDependents" value="2" min="0"></div>
         </div>
-        <button id="btn" onclick="predire()">Évaluer le risque</button>
+        <button class="principal" id="btn" onclick="predire()">Évaluer le risque</button>
         <div id="err" class="error"></div>
       </div>
 
       <div class="card">
         <h2>📊 Résultat</h2>
         <div id="result">
-          <div class="placeholder">Renseignez les informations du client<br>puis cliquez sur « Évaluer le risque »</div>
+          <div class="placeholder">Choisissez un profil type ou renseignez les informations,<br>puis cliquez sur « Évaluer le risque »</div>
         </div>
       </div>
     </div>
@@ -207,6 +258,30 @@ const CHAMPS = [
   "NumberOfDependents"
 ];
 
+const PROFILS = {
+  fiable: { age: 45, MonthlyIncome: 6500, RevolvingUtilizationOfUnsecuredLines: 0.15,
+            DebtRatio: 0.25, NumberOfTime30_59DaysPastDueNotWorse: 0,
+            NumberOfTime60_89DaysPastDueNotWorse: 0, NumberOfTimes90DaysLate: 0,
+            NumberOfOpenCreditLinesAndLoans: 6, NumberRealEstateLoansOrLines: 1,
+            NumberOfDependents: 2 },
+  limite: { age: 33, MonthlyIncome: 2500, RevolvingUtilizationOfUnsecuredLines: 0.65,
+            DebtRatio: 0.50, NumberOfTime30_59DaysPastDueNotWorse: 1,
+            NumberOfTime60_89DaysPastDueNotWorse: 0, NumberOfTimes90DaysLate: 1,
+            NumberOfOpenCreditLinesAndLoans: 10, NumberRealEstateLoansOrLines: 0,
+            NumberOfDependents: 1 },
+  risque: { age: 26, MonthlyIncome: 1100, RevolvingUtilizationOfUnsecuredLines: 0.97,
+            DebtRatio: 0.80, NumberOfTime30_59DaysPastDueNotWorse: 3,
+            NumberOfTime60_89DaysPastDueNotWorse: 2, NumberOfTimes90DaysLate: 4,
+            NumberOfOpenCreditLinesAndLoans: 12, NumberRealEstateLoansOrLines: 0,
+            NumberOfDependents: 3 }
+};
+
+function chargerProfil(nom) {
+  const p = PROFILS[nom];
+  for (const [k, v] of Object.entries(p)) document.getElementById(k).value = v;
+  predire();
+}
+
 function montrerOnglet(nom, el) {
   document.getElementById("onglet-scoring").classList.toggle("hidden", nom !== "scoring");
   document.getElementById("onglet-modeles").classList.toggle("hidden", nom !== "modeles");
@@ -252,6 +327,15 @@ function afficherJauge(proba, seuil, decision, message, facteurs) {
         <div class="value" style="color:${col}">${pct}%</div>
       </div>
       <div class="meta">Probabilité de défaut de paiement</div>
+
+      <div class="seuil-bar-wrap">
+        <div class="seuil-bar-label"><span>0%</span><span>Position vs seuil de décision</span><span>100%</span></div>
+        <div class="seuil-bar">
+          <div class="seuil-marker" style="left:${seuil * 100}%"></div>
+          <div class="proba-cursor" style="left:${Math.min(proba * 100, 100)}%"></div>
+        </div>
+      </div>
+
       <div class="decision ${cls}">${decision === "ACCEPTE" ? "✅ CRÉDIT ACCORDÉ" : "⛔ CRÉDIT REFUSÉ"}</div>
       <div class="meta">${message}<br>Seuil de décision métier : ${(seuil * 100).toFixed(0)}%</div>
       ${htmlFacteurs}
@@ -284,6 +368,21 @@ async function predire() {
     btn.textContent = "Évaluer le risque";
   }
 }
+
+// Badge statut API au chargement
+(async () => {
+  const badge = document.getElementById("api-status");
+  const txt = document.getElementById("api-status-txt");
+  try {
+    const r = await fetch("/health");
+    const h = await r.json();
+    badge.classList.add("ok");
+    txt.textContent = `API en ligne · ${h.model} · seuil ${Math.round(h.threshold * 100)}%`;
+  } catch {
+    badge.classList.add("ko");
+    txt.textContent = "API injoignable";
+  }
+})();
 </script>
 </body>
 </html>
