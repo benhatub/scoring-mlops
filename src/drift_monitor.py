@@ -17,6 +17,7 @@ Strategie :
 import numpy as np
 import pandas as pd
 import mlflow
+import json
 from pathlib import Path
 from scipy.stats import ks_2samp
 
@@ -76,20 +77,36 @@ def main():
     mlflow.set_experiment(EXPERIMENT)
 
     reference = pd.read_csv(DATA_DIR / "train.csv")
+    export = {"genere_le": pd.Timestamp.now().strftime("%d/%m/%Y"),
+              "seuils": {"ok": 0.1, "surveillance": 0.2},
+              "scenarios": []}
 
-    for scenario, drift in [("sans-drift", False), ("avec-drift", True)]:
+    scenarios = [
+        ("sans-drift", False, "Donnees de production conformes a la reference"),
+        ("avec-drift", True, "Crise economique simulee : revenus -20%, endettement +30%"),
+    ]
+
+    for nom, drift, libelle in scenarios:
         production = simuler_production(reference, drift=drift)
         rapport = analyser_drift(reference, production)
         n_alertes = int((rapport["statut"] == "ALERTE").sum())
 
-        print(f"\n===== Scenario : {scenario} =====")
+        print(f"\n===== Scenario : {nom} =====")
         print(rapport.to_string(index=False))
         print(f"Alertes : {n_alertes}")
         if n_alertes > 0:
             print(">>> DRIFT SIGNIFICATIF DETECTE : reentrainement recommande !")
 
-        with mlflow.start_run(run_name=f"drift-{scenario}"):
-            mlflow.log_param("scenario", scenario)
+        export["scenarios"].append({
+            "nom": nom,
+            "libelle": libelle,
+            "n_production": int(len(production)),
+            "nb_alertes": n_alertes,
+            "features": rapport.to_dict(orient="records"),
+        })
+
+        with mlflow.start_run(run_name=f"drift-{nom}"):
+            mlflow.log_param("scenario", nom)
             mlflow.log_param("n_production", len(production))
             for _, r in rapport.iterrows():
                 mlflow.log_metric(f"psi_{r['feature']}", r["psi"])
@@ -97,7 +114,14 @@ def main():
             rapport.to_csv("drift_report.csv", index=False)
             mlflow.log_artifact("drift_report.csv")
 
+    # Export pour l'interface web (lisible sans MLflow ni donnees brutes)
+    out_dir = Path("static/data")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    with open(out_dir / "drift_report.json", "w", encoding="utf-8") as f:
+        json.dump(export, f, ensure_ascii=False, indent=2)
+
     print("\n[OK] Rapports logges dans MLflow (experience 'drift-monitoring')")
+    print("[OK] Export interface : static/data/drift_report.json")
 
 
 if __name__ == "__main__":

@@ -29,7 +29,7 @@
   .api-status.ko .dot { background: #f87171; }
 
   /* Onglets */
-  .tabs { display: flex; gap: .5rem; justify-content: center; margin-bottom: 1.5rem; }
+  .tabs { display: flex; gap: .5rem; justify-content: center; margin-bottom: 1.5rem; flex-wrap: wrap; }
   .tab {
     padding: .5rem 1.2rem; border-radius: 8px; cursor: pointer;
     background: rgba(30,41,59,.7); border: 1px solid #334155;
@@ -132,6 +132,35 @@
     background: #334155; color: #cbd5e1; white-space: nowrap; margin-left: auto;
   }
 
+  /* Onglet monitoring */
+  .drift-switch { display: flex; gap: .5rem; margin-bottom: 1.2rem; flex-wrap: wrap; }
+  .drift-btn {
+    padding: .45rem 1rem; border-radius: 8px; cursor: pointer; font-size: .82rem;
+    font-weight: 600; background: #0f172a; border: 1px solid #475569; color: #cbd5e1;
+  }
+  .drift-btn.active { background: #0ea5e9; color: #0f172a; border-color: #0ea5e9; }
+  .drift-banner {
+    padding: .8rem 1rem; border-radius: 10px; font-weight: 600; font-size: .9rem;
+    margin-bottom: 1.2rem; border: 1px solid;
+  }
+  .drift-banner.ok { background: #052e16; color: #4ade80; border-color: #166534; }
+  .drift-banner.alerte { background: #450a0a; color: #f87171; border-color: #991b1b; }
+  .psi-row { margin-bottom: .9rem; }
+  .psi-head { display: flex; justify-content: space-between; align-items: baseline;
+              font-size: .84rem; margin-bottom: .3rem; gap: .5rem; }
+  .psi-head .nom { color: #e2e8f0; font-weight: 600; }
+  .psi-head .val { color: #94a3b8; font-size: .78rem; }
+  .psi-track { position: relative; height: 10px; border-radius: 99px; background: #0f172a;
+               border: 1px solid #334155; overflow: hidden; }
+  .psi-fill { height: 100%; border-radius: 99px; }
+  .psi-tag { font-size: .68rem; padding: .1rem .5rem; border-radius: 99px; font-weight: 700; margin-left: .4rem; }
+  .psi-tag.OK { background: #052e16; color: #4ade80; }
+  .psi-tag.SURVEILLANCE { background: #422006; color: #facc15; }
+  .psi-tag.ALERTE { background: #450a0a; color: #f87171; }
+  .seuils-legende { font-size: .78rem; color: #64748b; margin-top: 1rem; line-height: 1.5; }
+  .strategie { margin-top: 1.4rem; }
+  .strategie ol { margin: .5rem 0 0 1.2rem; font-size: .85rem; color: #cbd5e1; line-height: 1.7; }
+
   /* Onglet modeles */
   table.models { width: 100%; border-collapse: collapse; font-size: .85rem; }
   table.models th, table.models td {
@@ -165,6 +194,7 @@
   <div class="tabs">
     <div class="tab active" onclick="montrerOnglet('scoring', this)">🎯 Scoring</div>
     <div class="tab" onclick="montrerOnglet('modeles', this)">📈 Modèles &amp; Performance</div>
+    <div class="tab" onclick="montrerOnglet('monitoring', this)">🛰️ Monitoring</div>
   </div>
 
   <!-- ==================== ONGLET 1 : SCORING ==================== -->
@@ -247,6 +277,32 @@
       </div>
     </div>
   </div>
+
+  <!-- ==================== ONGLET 3 : MONITORING ==================== -->
+  <div id="onglet-monitoring" class="hidden">
+    <div class="card">
+      <h2>🛰️ Surveillance du data drift</h2>
+      <p class="note" style="margin-top:-.6rem">
+        Le modèle a appris sur des données d'une époque donnée. Si la population change,
+        il devient obsolète sans prévenir. Le <b>PSI (Population Stability Index)</b> compare
+        la distribution actuelle de chaque variable à celle de l'entraînement.
+      </p>
+      <div class="drift-switch" id="drift-switch"></div>
+      <div id="drift-contenu">
+        <div class="placeholder">Chargement du rapport de surveillance…</div>
+      </div>
+      <div class="strategie">
+        <h2 style="font-size:1rem">🔁 Stratégie en cas de dérive</h2>
+        <ol>
+          <li>Contrôle hebdomadaire automatisé du PSI sur les données récentes</li>
+          <li>Alerte dès qu'une variable dépasse 0,20</li>
+          <li>Investigation : dérive réelle du marché ou incident de collecte ?</li>
+          <li>Réentraînement, nouveau champion dans le Model Registry</li>
+          <li>La pipeline CI/CD teste puis redéploie automatiquement</li>
+        </ol>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -283,10 +339,11 @@ function chargerProfil(nom) {
 }
 
 function montrerOnglet(nom, el) {
-  document.getElementById("onglet-scoring").classList.toggle("hidden", nom !== "scoring");
-  document.getElementById("onglet-modeles").classList.toggle("hidden", nom !== "modeles");
+  ["scoring", "modeles", "monitoring"].forEach(o =>
+    document.getElementById("onglet-" + o).classList.toggle("hidden", o !== nom));
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
   el.classList.add("active");
+  if (nom === "monitoring") chargerDrift();
 }
 
 function couleur(p) {
@@ -369,7 +426,64 @@ async function predire() {
   }
 }
 
-// Badge statut API au chargement
+/* ---------------------- Onglet monitoring ---------------------- */
+let DRIFT = null;
+
+function couleurPsi(statut) {
+  return statut === "ALERTE" ? "#f87171" : statut === "SURVEILLANCE" ? "#facc15" : "#4ade80";
+}
+
+function afficherScenario(idx) {
+  const sc = DRIFT.scenarios[idx];
+  document.querySelectorAll(".drift-btn").forEach((b, i) =>
+    b.classList.toggle("active", i === idx));
+
+  const alerte = sc.nb_alertes > 0;
+  const banner = alerte
+    ? `<div class="drift-banner alerte">⛔ Drift significatif détecté sur ${sc.nb_alertes} variable(s) : réentraînement recommandé</div>`
+    : `<div class="drift-banner ok">✅ Aucune dérive significative : le modèle reste valide</div>`;
+
+  const lignes = sc.features.map(f => {
+    const col = couleurPsi(f.statut);
+    const largeur = Math.min(f.psi / 0.4 * 100, 100);
+    return `
+      <div class="psi-row">
+        <div class="psi-head">
+          <span class="nom">${f.feature}</span>
+          <span><span class="val">PSI ${f.psi.toFixed(3)} · p-value KS ${f.ks_pvalue}</span><span class="psi-tag ${f.statut}">${f.statut}</span></span>
+        </div>
+        <div class="psi-track"><div class="psi-fill" style="width:${largeur}%;background:${col}"></div></div>
+      </div>`;
+  }).join("");
+
+  document.getElementById("drift-contenu").innerHTML = `
+    ${banner}
+    <p class="note" style="margin-top:0">${sc.libelle} · ${sc.n_production.toLocaleString('fr-FR')} observations analysées</p>
+    ${lignes}
+    <div class="seuils-legende">
+      Seuils métier : PSI &lt; 0,10 stable · 0,10 à 0,20 surveillance · &gt; 0,20 alerte.
+      Le test de Kolmogorov-Smirnov sert de confirmation statistique.
+      Rapport généré le ${DRIFT.genere_le}.
+    </div>`;
+}
+
+async function chargerDrift() {
+  if (DRIFT) return;
+  try {
+    const r = await fetch("/static/data/drift_report.json");
+    if (!r.ok) throw new Error("indisponible");
+    DRIFT = await r.json();
+    document.getElementById("drift-switch").innerHTML = DRIFT.scenarios
+      .map((s, i) => `<div class="drift-btn" onclick="afficherScenario(${i})">${
+        s.nom === "sans-drift" ? "🟢 Sans dérive" : "🔴 Crise simulée"}</div>`).join("");
+    afficherScenario(0);
+  } catch (e) {
+    document.getElementById("drift-contenu").innerHTML =
+      `<div class="placeholder">Rapport de surveillance indisponible.<br>Lancez <code>python src/drift_monitor.py</code> pour le générer.</div>`;
+  }
+}
+
+/* ---------------------- Badge statut API ---------------------- */
 (async () => {
   const badge = document.getElementById("api-status");
   const txt = document.getElementById("api-status-txt");
