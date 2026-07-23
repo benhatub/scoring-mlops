@@ -17,3 +17,5 @@ reports/
 # IDE / OS
 .vscode/
 Thumbs.db
+
+drift_report.csv
