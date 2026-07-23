@@ -1,0 +1,97 @@
+{
+  "genere_le": "22/07/2026",
+  "seuils": {
+    "ok": 0.1,
+    "surveillance": 0.2
+  },
+  "scenarios": [
+    {
+      "nom": "sans-drift",
+      "libelle": "Donnees de production conformes a la reference",
+      "n_production": 20000,
+      "nb_alertes": 0,
+      "features": [
+        {
+          "feature": "age",
+          "psi": 0.0006,
+          "ks_pvalue": 0.595914,
+          "statut": "OK"
+        },
+        {
+          "feature": "NumberOfOpenCreditLinesAndLoans",
+          "psi": 0.0003,
+          "ks_pvalue": 0.994407,
+          "statut": "OK"
+        },
+        {
+          "feature": "RevolvingUtilizationOfUnsecuredLines",
+          "psi": 0.0002,
+          "ks_pvalue": 0.598692,
+          "statut": "OK"
+        },
+        {
+          "feature": "DebtRatio",
+          "psi": 0.0002,
+          "ks_pvalue": 0.989272,
+          "statut": "OK"
+        },
+        {
+          "feature": "MonthlyIncome",
+          "psi": 0.0001,
+          "ks_pvalue": 0.995076,
+          "statut": "OK"
+        },
+        {
+          "feature": "TotalPastDue",
+          "psi": 0.0,
+          "ks_pvalue": 0.999998,
+          "statut": "OK"
+        }
+      ]
+    },
+    {
+      "nom": "avec-drift",
+      "libelle": "Crise economique simulee : revenus -20%, endettement +30%",
+      "n_production": 20000,
+      "nb_alertes": 1,
+      "features": [
+        {
+          "feature": "MonthlyIncome",
+          "psi": 1.4048,
+          "ks_pvalue": 0.0,
+          "statut": "ALERTE"
+        },
+        {
+          "feature": "RevolvingUtilizationOfUnsecuredLines",
+          "psi": 0.1015,
+          "ks_pvalue": 0.0,
+          "statut": "SURVEILLANCE"
+        },
+        {
+          "feature": "DebtRatio",
+          "psi": 0.0811,
+          "ks_pvalue": 0.0,
+          "statut": "OK"
+        },
+        {
+          "feature": "TotalPastDue",
+          "psi": 0.0704,
+          "ks_pvalue": 0.0,
+          "statut": "OK"
+        },
+        {
+          "feature": "age",
+          "psi": 0.0006,
+          "ks_pvalue": 0.595914,
+          "statut": "OK"
+        },
+        {
+          "feature": "NumberOfOpenCreditLinesAndLoans",
+          "psi": 0.0003,
+          "ks_pvalue": 0.994407,
+          "statut": "OK"
+        }
+      ]
+    }
+  ]
+}
